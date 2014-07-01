@@ -22,7 +22,7 @@ public final class MainActivity extends Activity{
 			public void onClick(View view) {
 				Intent intent = new Intent();
 				intent.setClass(MainActivity.this, CreditActivity.class);
-				intent.putExtra("url", "http://www.dui88.com/test/demoRedirectSAdfjosfdjdsa");
+				intent.putExtra("url", "http://www.duiba.com.cn/test/demoRedirectSAdfjosfdjdsa");
 				startActivity(intent);
 			}
 		});
