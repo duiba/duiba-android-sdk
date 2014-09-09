@@ -43,7 +43,7 @@ public class CreditActivity extends Activity {
 		
 		url=getIntent().getStringExtra("url");
 		if(url==null){
-			throw new RuntimeException("url 必须传入");
+			throw new RuntimeException("url can't be blank");
 		}
 		
 		initView();
@@ -87,7 +87,7 @@ public class CreditActivity extends Activity {
 		mNavigationBar.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT,48));
 		
 		mTitle=new TextView(this);
-		mTitle.setText("加载中");
+		mTitle.setText("Home");
 		mTitle.setMaxWidth(250);
 		mTitle.setTextSize(20.0f);
 		
@@ -98,7 +98,7 @@ public class CreditActivity extends Activity {
 		
 		
 		mBack=new TextView(this);
-		mBack.setText("返回");
+		mBack.setText("Back");
 		mBack.setTextSize(20.0f);
 		
 		RelativeLayout.LayoutParams mBackLayout=new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);

@@ -14,7 +14,7 @@ public final class MainActivity extends Activity{
 		super.onCreate(savedInstanceState);
 		
 		Button btn=new Button(this);
-		btn.setText("µã»÷½øÈë");
+		btn.setText("Enter");
 		
 		setContentView(btn);
 		btn.setOnClickListener(new OnClickListener() {
