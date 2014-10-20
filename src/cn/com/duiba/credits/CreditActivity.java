@@ -1,10 +1,23 @@
 package cn.com.duiba.credits;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
+
+import android.app.ActionBar;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.telephony.TelephonyManager;
+import android.telephony.cdma.CdmaCellLocation;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -17,6 +30,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebSettings.PluginState;
 import android.webkit.WebSettings.ZoomDensity;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -25,6 +39,12 @@ public class CreditActivity extends Activity {
 	
 	protected String url;
 	
+	protected static Boolean ifRefresh = false;
+	
+    protected String navColor;
+    
+    protected String titleColor;
+    
 	protected WebView mWebView;
 	
 	protected LinearLayout mLinearLayout;
@@ -33,9 +53,11 @@ public class CreditActivity extends Activity {
 	
 	protected TextView mTitle;
 	
-	protected TextView mBack;
+    protected ImageView mBackView;
 	
 	private int RequestCode=100;
+	
+	private static Stack<Activity> activityStack;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -46,17 +68,34 @@ public class CreditActivity extends Activity {
 			throw new RuntimeException("url can't be blank");
 		}
 		
+		if (activityStack == null) {
+			activityStack = new Stack<Activity>();
+		}
+		activityStack.push(this);
+		
 		initView();
 		setContentView(mLinearLayout);
-		
-		mBack.setClickable(true);
-		mBack.setOnClickListener(new OnClickListener() {
+		 //配置导航栏背景颜色
+        navColor=getIntent().getStringExtra("navColor");
+        String navColorTemp="0xff"+navColor.substring(1,navColor.length());
+        Long navl = Long.parseLong(navColorTemp.substring(2), 16);
+        //配置导航条文本颜色
+        titleColor=getIntent().getStringExtra("titleColor");
+        String titleColorTemp="0xff"+titleColor.substring(1,titleColor.length());
+        Long titlel = Long.parseLong(titleColorTemp.substring(2), 16);
+        ActionBar actionBar = getActionBar();  
+        actionBar.hide();
+        mTitle.setTextColor(titlel.intValue());
+        mNavigationBar.setBackgroundColor(navl.intValue());
+        
+        mBackView.setPadding(50, 50, 50, 50);
+        mBackView.setClickable(true);
+        mBackView.setOnClickListener(new OnClickListener() {
 			public void onClick(View view) {
 				onBackClick();
 			}
 		});
 
-	    
 	    mWebView.setWebChromeClient(new WebChromeClient(){
 	    	@Override
 	    	public void onReceivedTitle(WebView view, String title) {
@@ -74,12 +113,10 @@ public class CreditActivity extends Activity {
 	    mWebView.loadUrl(url);
 	}
 	
-	
-	
 	protected void onBackClick(){
 		Intent intent=new Intent();
 		setResult(99,intent);
-		finish();
+		finishActivity(this);
 	}
 	
 	protected void initNavigationBar(){
@@ -87,25 +124,19 @@ public class CreditActivity extends Activity {
 		mNavigationBar.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT,48));
 		
 		mTitle=new TextView(this);
-		mTitle.setText("Home");
-		mTitle.setMaxWidth(250);
+		mTitle.setMaxWidth(400);
 		mTitle.setTextSize(20.0f);
-		
 		mNavigationBar.addView(mTitle);
 		
-		android.widget.RelativeLayout.LayoutParams p=(android.widget.RelativeLayout.LayoutParams)mTitle.getLayoutParams();
-		p.addRule(RelativeLayout.CENTER_IN_PARENT);
+        mBackView = new ImageView(this);
+        mBackView.setBackgroundResource(android.R.drawable.ic_menu_revert);    
 		
-		
-		mBack=new TextView(this);
-		mBack.setText("Back");
-		mBack.setTextSize(20.0f);
+		android.widget.RelativeLayout.LayoutParams lp=(android.widget.RelativeLayout.LayoutParams)mTitle.getLayoutParams();
+		lp.addRule(RelativeLayout.CENTER_IN_PARENT);
 		
 		RelativeLayout.LayoutParams mBackLayout=new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-		mBackLayout.setMargins(50, 10, 0, 0);
-		mNavigationBar.addView(mBack,mBackLayout);
-		
-		
+		mBackLayout.setMargins(20, 5, 5, 5);
+		mNavigationBar.addView(mBackView,mBackLayout);
 	}
 	
 	protected void initWebView(){
@@ -173,25 +204,52 @@ public class CreditActivity extends Activity {
 		if(url.contains("dbnewopen")){
 			Intent intent = new Intent();
 			intent.setClass(CreditActivity.this, CreditActivity.this.getClass());
+			intent.putExtra("navColor", navColor);
+            intent.putExtra("titleColor", titleColor);
+            url = url.replace("dbnewopen", "none"+Math.random());
 			intent.putExtra("url", url);
 			startActivityForResult(intent, RequestCode);
 		}else if(url.contains("dbbackrefresh")){
 			Intent intent = new Intent();
 			intent.putExtra("url", url);
-			setResult(RequestCode, intent);
-			finish();
+			intent.putExtra("navColor", navColor);
+            intent.putExtra("titleColor", titleColor);
+			setResult(RequestCode,intent);
+			finishActivity(this);
+        }else if (url.contains("dbbackrootrefresh")){
+        	Intent intent = new Intent();
+			intent.putExtra("url", url);
+			intent.putExtra("navColor", navColor);
+            intent.putExtra("titleColor", titleColor);
+			finishUpActivity();
+			CreditActivity.ifRefresh = true;
+        }else if (url.contains("dbbackroot")){
+        	finishUpActivity();
+        }else if(url.contains("dbback")){
+            finishActivity(this);
 		}else{
 			view.loadUrl(url);
 		}
 		return true;
 	}
 	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		if(requestCode==RequestCode){
-			if(data.getStringExtra("url")!=null){
-				this.url=data.getStringExtra("url");
+	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		if(resultCode==100){
+			if(intent.getStringExtra("url")!=null){
+				this.url=intent.getStringExtra("url");
 				mWebView.loadUrl(this.url);
+				ifRefresh = false;
 			}
+		}
+	}
+	
+	@Override
+	protected void onResume(){
+		super.onResume();
+		if(ifRefresh){
+			this.url=getIntent().getStringExtra("url");
+			mWebView.loadUrl(this.url);
+			ifRefresh = false;
 		}
 	}
 	
@@ -204,4 +262,115 @@ public class CreditActivity extends Activity {
 			return super.onKeyDown(keyCode, event);			
 		}
 	}
+	
+	/**
+	 * 结束除了最底部一个以外的所有Activity
+	 */
+	public void finishUpActivity() {
+		int size = activityStack.size();
+		for (int i = 0;i < size-1; i++) {
+				activityStack.pop().finish();
+		}
+	}
+	
+	/**
+	 * 结束指定的Activity
+	 */
+	public void finishActivity(Activity activity) {
+		if (activity != null) {
+			activityStack.remove(activity);
+			activity.finish();
+		}
+	}
+	
+	/** 
+	 * 查询手机内非系统应用 
+	 * @param context 
+	 * @return 
+	 */  
+	public List<PackageInfo> getAllApps(Context context) {
+	    List<PackageInfo> apps = new ArrayList<PackageInfo>();
+	    PackageManager pManager = context.getPackageManager();
+	    //获取手机内所有应用
+	    List<PackageInfo> paklist = pManager.getInstalledPackages(0);
+	    for (int i = 0; i < paklist.size(); i++) {
+	        PackageInfo pak = (PackageInfo) paklist.get(i);
+	        //判断是否为非系统预装的应用程序
+	        if ((pak.applicationInfo.flags & pak.applicationInfo.FLAG_SYSTEM) <= 0) {
+	            // customs applications
+	            apps.add(pak);
+	        }  
+	    }
+	    return apps;
+	}  
+	
+	/**
+	 * 获取用户最近一次的地理位置，经纬度。
+	 * @param context
+	 * @return
+	 */
+	public static String getLocation(Context context) {
+	        android.location.Location location = null;
+	        
+	        String provider = null;
+	        double latitude = 0;
+	        double longitude = 0;
+	        double accuracy = 0;
+	        
+	        String userLocation = null;
+
+	        LocationManager lManager = (LocationManager) context
+	                .getSystemService(Context.LOCATION_SERVICE);
+
+	        if (lManager == null) {
+	            Log.e("location","LocationManager is null");
+	            return null;
+	        }
+
+	        android.location.Location aLocation = null;
+
+	        // 开启了gps
+	        if (lManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+	        	provider = LocationManager.GPS_PROVIDER;
+	            aLocation = lManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+	            if (aLocation != null) {
+	                latitude = aLocation.getLatitude();
+	                longitude = aLocation.getLongitude();
+	                accuracy = aLocation.getAccuracy();
+	                userLocation = "location: latitude="+latitude+";longitude="+longitude+";accuracy="+accuracy;
+	                return userLocation;
+	            }
+	        }
+
+	        if (lManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+	            provider = LocationManager.NETWORK_PROVIDER;
+	            aLocation = lManager
+	                    .getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+	        }
+
+	        // 如果net能取到位置，则返回
+	        if (aLocation != null) {
+	            latitude = aLocation.getLatitude();
+	            longitude = aLocation.getLongitude();
+	            accuracy = aLocation.getAccuracy();
+	            userLocation = "location: latitude="+latitude+";longitude="+longitude+";accuracy="+accuracy;
+                return userLocation;
+	        }
+	        TelephonyManager telephonyManager=  (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+	        // 否则判断是否cmda定位
+	        if (telephonyManager.getPhoneType() == TelephonyManager.PHONE_TYPE_CDMA) {
+	            CdmaCellLocation cdmaCellLocation = (CdmaCellLocation) telephonyManager.getCellLocation();
+	            if (cdmaCellLocation != null) {
+	                provider = "cdma";
+	                latitude = (double) cdmaCellLocation
+	                        .getBaseStationLatitude() / 14400;
+	                longitude = (double) cdmaCellLocation
+	                        .getBaseStationLongitude() / 14400;
+	                userLocation = "location: latitude="+latitude+";longitude="+longitude+";accuracy="+accuracy;
+	                return userLocation;
+	            }
+	        }
+
+	        return null;
+	    }
 }
