@@ -24,7 +24,7 @@ public final class MainActivity extends Activity{
 				intent.setClass(MainActivity.this, CreditActivity.class);
                 intent.putExtra("navColor", "#0acbc1");    //配置导航条的背景颜色，请用#ffffff长格式。
                 intent.putExtra("titleColor", "#ffffff");    //配置导航条标题的颜色，请用#ffffff长格式。
-                intent.putExtra("url", "http://192.168.1.230:8080/test/inner4me");    //配置自动登陆地址，每次需动态生成。
+                intent.putExtra("url", "http://www.duiba.com.cn/test/demoRedirectSAdfjosfdjdsa");    //配置自动登陆地址，每次需动态生成。
 				startActivity(intent);
 			}
 		});
