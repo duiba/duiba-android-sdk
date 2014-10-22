@@ -207,10 +207,11 @@ public class CreditActivity extends Activity {
 			intent.setClass(CreditActivity.this, CreditActivity.this.getClass());
 			intent.putExtra("navColor", navColor);
             intent.putExtra("titleColor", titleColor);
-            url = url.replace("dbnewopen", "none"+Math.random());
+            url = url.replace("dbnewopen", "none");
 			intent.putExtra("url", url);
 			startActivityForResult(intent, RequestCode);
 		}else if(url.contains("dbbackrefresh")){
+			url = url.replace("dbbackrefresh", "none");
 			Intent intent = new Intent();
 			intent.putExtra("url", url);
 			intent.putExtra("navColor", navColor);
@@ -218,6 +219,7 @@ public class CreditActivity extends Activity {
 			setResult(RequestCode,intent);
 			finishActivity(this);
         }else if (url.contains("dbbackrootrefresh")){
+        	url = url.replace("dbbackrootrefresh", "none");
         	Intent intent = new Intent();
 			intent.putExtra("url", url);
 			intent.putExtra("navColor", navColor);
@@ -225,8 +227,10 @@ public class CreditActivity extends Activity {
 			finishUpActivity();
 			CreditActivity.ifRefresh = true;
         }else if (url.contains("dbbackroot")){
+        	url = url.replace("dbbackroot", "none");
         	finishUpActivity();
         }else if(url.contains("dbback")){
+        	url = url.replace("dbback", "none");
             finishActivity(this);
 		}else{
 			view.loadUrl(url);
