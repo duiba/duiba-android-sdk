@@ -1,5 +1,8 @@
 package cn.com.duiba.credits;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
@@ -14,6 +17,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
@@ -233,10 +237,28 @@ public class CreditActivity extends Activity {
         	url = url.replace("dbback", "none");
             finishActivity(this);
 		}else{
+			
+			try {
+				URI uri=new URI(url);
+				URI current=new URI(this.url);
+				if(!uri.getHost().endsWith("duiba.com.cn") && !uri.getHost().equalsIgnoreCase(current.getHost())){
+					Intent intent = new Intent();        
+					intent.setAction("android.intent.action.VIEW");    
+					Uri content_url = Uri.parse(url);   
+					intent.setData(content_url);  
+					startActivity(intent);
+					return false;
+				}
+			} catch (URISyntaxException e) {
+				Log.e("DUIBA", "uri 转换失败"+e.getMessage());
+			}
+			
 			view.loadUrl(url);
+
 		}
 		return true;
 	}
+
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		if(resultCode==100){
