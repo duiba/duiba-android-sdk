@@ -237,21 +237,12 @@ public class CreditActivity extends Activity {
         	url = url.replace("dbback", "none");
             finishActivity(this);
 		}else{
-			
-			try {
-				URI uri=new URI(url);
-				URI current=new URI(this.url);
-				if(!uri.getHost().endsWith("duiba.com.cn") && !uri.getHost().equalsIgnoreCase(current.getHost())){
-					Intent intent = new Intent();        
-					intent.setAction("android.intent.action.VIEW");    
-					Uri content_url = Uri.parse(url);   
-					intent.setData(content_url);  
-					startActivity(intent);
-					return false;
-				}
-			} catch (URISyntaxException e) {
-				Log.e("DUIBA", "uri 转换失败"+e.getMessage());
-			}
+        	if(url.endsWith(".apk")){
+        		Uri uri = Uri.parse(url);
+        		Intent viewIntent = new Intent(Intent.ACTION_VIEW,uri);
+        		startActivity(viewIntent);
+        		return true;
+        	}
 			
 			view.loadUrl(url);
 
