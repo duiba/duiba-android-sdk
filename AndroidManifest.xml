@@ -24,7 +24,7 @@
             </intent-filter>
         </activity>
         
-        <activity android:name=".CreditActivity">
+        <activity android:name=".CreditsActivity">
             <meta-data  
 		        android:name="android.support.PARENT_ACTIVITY"  
 		        android:value=".MainActivity" />
