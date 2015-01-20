@@ -1,15 +1,15 @@
 package cn.com.duiba.credits;
 
 
-import cn.com.duiba.credits.CreditActivity.CreditsListener;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.Toast;
+import cn.com.duiba.credits.CreditActivity.CreditsListener;
 
 public final class MainActivity extends Activity{
 	@Override
@@ -48,6 +48,8 @@ public final class MainActivity extends Activity{
 			         * @param currentUrl 当前页面的url
 			         */
 					public void onLoginClick(WebView webView, String currentUrl) {
+						Toast.makeText(getApplicationContext(), "点击了登录，跳转登录页面。",
+							     Toast.LENGTH_SHORT).show();
 						//当未登录的用户点击去登录时，会调用此处代码。
 						//为了用户登录后能回到之前未登录前的页面。
 						//当用户登录成功后，需要重新动态生成一次自动登录url，需包含redirect参数，将currentUrl放入redirect参数。
