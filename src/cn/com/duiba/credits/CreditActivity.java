@@ -273,6 +273,9 @@ public class CreditActivity extends Activity {
             view.loadUrl(url);
             return true;
         }
+        if(!url.startsWith("http://") && !url.startsWith("https://")){
+            return false;
+        }
         if(url.contains("dbnewopen")){
             Intent intent = new Intent();
             intent.setClass(CreditActivity.this, CreditActivity.this.getClass());
@@ -304,7 +307,7 @@ public class CreditActivity extends Activity {
             url = url.replace("dbback", "none");
             finishActivity(this);
         }else{
-            if(url.endsWith(".apk")){
+        	if(url.endsWith(".apk") || url.contains(".apk?")){
                 Uri uri = Uri.parse(url);
                 Intent viewIntent = new Intent(Intent.ACTION_VIEW,uri);
                 startActivity(viewIntent);
