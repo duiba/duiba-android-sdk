@@ -345,6 +345,9 @@ public class CreditActivity extends Activity {
             this.url=getIntent().getStringExtra("url");
             mWebView.loadUrl(this.url);
             ifRefresh = false;
+        }else{
+        	//返回页面时，如果页面含有onDBNewOpenBack()方法,则调用该js方法。
+        	mWebView.loadUrl("javascript:if(window.onDBNewOpenBack){onDBNewOpenBack()}");
         }
     }
 
