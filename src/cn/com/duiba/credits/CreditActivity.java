@@ -39,6 +39,8 @@ import android.widget.TextView;
 
 public class CreditActivity extends Activity {
 
+	public static final String VERSION="1.0";
+    private static String ua;
 
     public interface CreditsListener{
         /**
@@ -61,7 +63,7 @@ public class CreditActivity extends Activity {
     public static CreditsListener creditsListener;
 
     protected String url;
-
+    
     protected String shareUrl;			//分享的url
     protected String shareThumbnail;	//分享的缩略图
     protected String shareTitle;		//分享的标题
@@ -125,6 +127,11 @@ public class CreditActivity extends Activity {
                 onBackClick();
             }
         });
+        
+        if(ua==null){
+            ua=mWebView.getSettings().getUserAgentString()+" Duiba/"+VERSION;
+        }
+        mWebView.getSettings().setUserAgentString(ua);
 
         mWebView.setWebChromeClient(new WebChromeClient(){
             @Override
