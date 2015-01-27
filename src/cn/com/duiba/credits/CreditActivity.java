@@ -36,7 +36,16 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-
+/**
+ * Version 1.0.1
+ * @author duiba
+ * 改动：
+ * 1、设置toolbar标题title为单行显示。
+ * 2、设置tile最大宽度为200dp。
+ * 3、修改toolbar高度为dip单位，20dip。
+ * 4、修改返回图标为靠左居中，margin-left=10dp。
+ * 5、添加dip2px()单位转换方法。
+ */
 public class CreditActivity extends Activity {
 
 	public static final String VERSION="1.0";
@@ -199,11 +208,17 @@ public class CreditActivity extends Activity {
     }
 
     protected void initNavigationBar(){
+    	int dp200 = dip2px(this,200);
+    	int dp50 = dip2px(this,50);
+    	int dp20 = dip2px(this,20);
+    	int dp10 = dip2px(this,10);
+        
         mNavigationBar=new RelativeLayout(this);
-        mNavigationBar.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT,48));
+        mNavigationBar.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT,dp20));
 
         mTitle=new TextView(this);
-        mTitle.setMaxWidth(400);
+        mTitle.setMaxWidth(dp200);
+        mTitle.setLines(1);
         mTitle.setTextSize(20.0f);
         mNavigationBar.addView(mTitle);
 
@@ -213,8 +228,10 @@ public class CreditActivity extends Activity {
         android.widget.RelativeLayout.LayoutParams lp=(android.widget.RelativeLayout.LayoutParams)mTitle.getLayoutParams();
         lp.addRule(RelativeLayout.CENTER_IN_PARENT);
 
-        RelativeLayout.LayoutParams mBackLayout=new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        mBackLayout.setMargins(20, 5, 5, 5);
+        RelativeLayout.LayoutParams mBackLayout=new RelativeLayout.LayoutParams(dp50, dp50);
+        mBackLayout.addRule(RelativeLayout.CENTER_VERTICAL, RelativeLayout.TRUE);
+        mBackLayout.addRule(RelativeLayout.ALIGN_PARENT_LEFT); 
+        mBackLayout.setMargins(dp10, 0, 0, 0);
         mNavigationBar.addView(mBackView,mBackLayout);
     }
 
@@ -259,9 +276,11 @@ public class CreditActivity extends Activity {
         mLinearLayout.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
         mLinearLayout.setOrientation(LinearLayout.VERTICAL);
 
+        int height50dp = dip2px(this,50);
+        
         initNavigationBar();
         LinearLayout.LayoutParams mLayoutParams = new LinearLayout.LayoutParams(
-                LayoutParams.FILL_PARENT, 100);
+                LayoutParams.FILL_PARENT, height50dp);
 
         mLinearLayout.addView(mNavigationBar,mLayoutParams);
 
@@ -380,6 +399,14 @@ public class CreditActivity extends Activity {
             activity.finish();
         }
     }
+    
+    /** 
+     * 根据手机的分辨率从 dp 的单位 转成为 px(像素) 
+     */  
+    public static int dip2px(Context context, float dpValue) {
+        final float scale = context.getResources().getDisplayMetrics().density;  
+        return (int) (dpValue * scale + 0.5f);  
+    }  
 
     /**
      * 查询手机内非系统应用
