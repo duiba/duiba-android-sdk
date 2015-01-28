@@ -39,16 +39,22 @@ import android.widget.TextView;
 /**
  * Version 1.0.1
  * @author duiba
- * 改动：
  * 1、设置toolbar标题title为单行显示。
  * 2、设置tile最大宽度为200dp。
  * 3、修改toolbar高度为dip单位，20dip。
  * 4、修改返回图标为靠左居中，margin-left=10dp。
  * 5、添加dip2px()单位转换方法。
  */
+/**
+ * Version 1.0.2
+ * @author duiba
+ * 1、修复未登录用户登录后回到页面，后退到之前的页面时会刷新一次，去掉未登录状态。
+ * 2、后退刷新方法修复。
+ * 3、将栈内Activity对象改为CreditActivity。
+ */
 public class CreditActivity extends Activity {
 
-	public static final String VERSION="1.0.1";
+	public static final String VERSION="1.0.2";
     private static String ua;
 
     public interface CreditsListener{
@@ -78,7 +84,8 @@ public class CreditActivity extends Activity {
     protected String shareTitle;		//分享的标题
     protected String shareSubtitle;		//分享的副标题
 
-    protected static Boolean ifRefresh = false;
+    protected Boolean ifRefresh = false;
+    protected Boolean delayRefresh = false;
 
     protected String navColor;
 
@@ -96,7 +103,7 @@ public class CreditActivity extends Activity {
 
     private int RequestCode=100;
 
-    private static Stack<Activity> activityStack;
+    private static Stack<CreditActivity> activityStack;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,7 +115,7 @@ public class CreditActivity extends Activity {
         }
 
         if (activityStack == null) {
-            activityStack = new Stack<Activity>();
+            activityStack = new Stack<CreditActivity>();
         }
         activityStack.push(this);
 
@@ -294,6 +301,13 @@ public class CreditActivity extends Activity {
         mTitle.setText(title);
     }
 
+    /**
+     * 拦截url请求，根据url结尾执行相应的动作。
+     * 用途：模仿原生应用体验。
+     * @param view
+     * @param url
+     * @return
+     */
     protected boolean shouldOverrideUrlByDuiba(WebView view,String url){
         if(this.url.equals(url)){
             view.loadUrl(url);
@@ -320,12 +334,8 @@ public class CreditActivity extends Activity {
             finishActivity(this);
         }else if (url.contains("dbbackrootrefresh")){
             url = url.replace("dbbackrootrefresh", "none");
-            Intent intent = new Intent();
-            intent.putExtra("url", url);
-            intent.putExtra("navColor", navColor);
-            intent.putExtra("titleColor", titleColor);
+            activityStack.get(0).ifRefresh = true;
             finishUpActivity();
-            CreditActivity.ifRefresh = true;
         }else if (url.contains("dbbackroot")){
             url = url.replace("dbbackroot", "none");
             finishUpActivity();
@@ -339,6 +349,10 @@ public class CreditActivity extends Activity {
                 startActivity(viewIntent);
                 return true;
             }
+        	if(url.contains("autologin")&&activityStack.size()>0){
+        		//将所有已开Activity设置为onResume时刷新页面。
+        		setAllActivityDelayRefresh();
+        	}
 
             view.loadUrl(url);
 
@@ -362,8 +376,11 @@ public class CreditActivity extends Activity {
         super.onResume();
         if(ifRefresh){
             this.url=getIntent().getStringExtra("url");
-            mWebView.loadUrl(this.url);
-            ifRefresh = false;
+        	mWebView.loadUrl( this.url);
+        	ifRefresh = false;
+        }else if(delayRefresh){
+        	mWebView.reload();
+        	delayRefresh = false;
         }else{
         	//返回页面时，如果页面含有onDBNewOpenBack()方法,则调用该js方法。
         	mWebView.loadUrl("javascript:if(window.onDBNewOpenBack){onDBNewOpenBack()}");
@@ -397,6 +414,19 @@ public class CreditActivity extends Activity {
         if (activity != null) {
             activityStack.remove(activity);
             activity.finish();
+        }
+    }
+    
+    /**
+     * 设置栈内所有Activity为返回待刷新。
+     * 作用：未登录用户唤起登录后，将所有栈内的Activity设置为onResume时刷新页面。
+     */
+    public void setAllActivityDelayRefresh(){
+    	int size = activityStack.size();
+        for (int i = 0;i < size; i++) {
+        	if(activityStack.get(i)!=this){
+        		activityStack.get(i).delayRefresh = true;
+        	}
         }
     }
     
