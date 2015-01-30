@@ -334,11 +334,19 @@ public class CreditActivity extends Activity {
             finishActivity(this);
         }else if (url.contains("dbbackrootrefresh")){
             url = url.replace("dbbackrootrefresh", "none");
-            activityStack.get(0).ifRefresh = true;
-            finishUpActivity();
+            if(activityStack.size()==1){
+            	finishActivity(this);
+            }else{
+            	activityStack.get(0).ifRefresh = true;
+                finishUpActivity();
+            }
         }else if (url.contains("dbbackroot")){
             url = url.replace("dbbackroot", "none");
-            finishUpActivity();
+            if(activityStack.size()==1){
+            	finishActivity(this);
+            }else{
+                finishUpActivity();
+            }
         }else if(url.contains("dbback")){
             url = url.replace("dbback", "none");
             finishActivity(this);
