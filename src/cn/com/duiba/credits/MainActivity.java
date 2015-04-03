@@ -2,13 +2,13 @@ package cn.com.duiba.credits;
 
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.webkit.WebView;
 import android.widget.Button;
-import android.widget.Toast;
 import cn.com.duiba.credits.CreditActivity.CreditsListener;
 
 public final class MainActivity extends Activity{
@@ -27,7 +27,7 @@ public final class MainActivity extends Activity{
 				intent.setClass(MainActivity.this, CreditActivity.class);
                 intent.putExtra("navColor", "#0acbc1");    //配置导航条的背景颜色，请用#ffffff长格式。
                 intent.putExtra("titleColor", "#ffffff");    //配置导航条标题的颜色，请用#ffffff长格式。
-                intent.putExtra("url", "http://www.duiba.com.cn/test/demoRedirectSAdfjosfdjdsa");    //配置自动登陆地址，每次需动态生成。
+                intent.putExtra("url", "http://www.duiba.com.cn/test/demoRedirectSAdfjosfdjdsa");    //配置自动登陆地址，每次需服务端动态生成。
 				startActivity(intent);
 				
 				CreditActivity.creditsListener = new CreditsListener() {
@@ -39,7 +39,12 @@ public final class MainActivity extends Activity{
 			         * @param shareSubtitle 分享的副标题
 			         */
 					public void onShareClick(WebView webView, String shareUrl,String shareThumbnail, String shareTitle,  String shareSubtitle) {
-						//当分享按钮被点击时，会调用此处代码。
+						//当分享按钮被点击时，会调用此处代码。在这里处理分享的业务逻辑。
+						new AlertDialog.Builder(webView.getContext())
+						.setTitle("分享信息")
+						.setItems(new String[] {"标题："+shareTitle,"副标题："+shareSubtitle,"缩略图地址："+shareThumbnail,"链接："+shareUrl}, null)
+						.setNegativeButton("确定", null)
+						.show();
 					}
 					
 					/**
@@ -48,11 +53,15 @@ public final class MainActivity extends Activity{
 			         * @param currentUrl 当前页面的url
 			         */
 					public void onLoginClick(WebView webView, String currentUrl) {
-						Toast.makeText(getApplicationContext(), "点击了登录，跳转登录页面。",
-							     Toast.LENGTH_SHORT).show();
 						//当未登录的用户点击去登录时，会调用此处代码。
 						//为了用户登录后能回到之前未登录前的页面。
 						//当用户登录成功后，需要重新动态生成一次自动登录url，需包含redirect参数，将currentUrl放入redirect参数。
+						new AlertDialog.Builder(webView.getContext()) 
+					 	.setTitle("跳转登录")
+					 	.setMessage("跳转到登录页面？")
+					 	.setPositiveButton("是", null)
+					 	.setNegativeButton("否", null)
+					 	.show();
 					}
 				};
 			}

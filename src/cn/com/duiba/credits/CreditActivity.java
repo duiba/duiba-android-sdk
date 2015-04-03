@@ -3,7 +3,6 @@ package cn.com.duiba.credits;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
-
 import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
@@ -36,6 +35,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+
 /**
  * Version 1.0.1
  * @author duiba
@@ -52,10 +52,18 @@ import android.widget.TextView;
  * 2、后退刷新方法修复。
  * 3、将栈内Activity对象改为CreditActivity。
  */
+/**
+ * Version 1.0.3
+ * @author duiba
+ * 1、添加分享功能，支持分享的页面的导航栏会显示“分享”，需到兑吧管理后台配置并开启。
+ * 2、添加各个功能的注释信息。
+ * 3、分享接口和自动登录接口改为AlertDialog的展示形式。
+ */
 public class CreditActivity extends Activity {
-
-	public static final String VERSION="1.0.2";
-    private static String ua;
+	private static String ua;
+	private static Stack<CreditActivity> activityStack;
+	public static final String VERSION="1.0.3";
+    public static CreditsListener creditsListener;
 
     public interface CreditsListener{
         /**
@@ -75,8 +83,6 @@ public class CreditActivity extends Activity {
         public void onLoginClick(WebView webView,String currentUrl);
     }
 
-    public static CreditsListener creditsListener;
-
     protected String url;
     
     protected String shareUrl;			//分享的url
@@ -88,27 +94,24 @@ public class CreditActivity extends Activity {
     protected Boolean delayRefresh = false;
 
     protected String navColor;
-
     protected String titleColor;
-
+    protected Long shareColor;
+    
     protected WebView mWebView;
-
     protected LinearLayout mLinearLayout;
-
     protected RelativeLayout mNavigationBar;
-
     protected TextView mTitle;
-
     protected ImageView mBackView;
+    protected TextView mShare;
 
     private int RequestCode=100;
-
-    private static Stack<CreditActivity> activityStack;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);	//锁定竖屏显示
+        
         url=getIntent().getStringExtra("url");
         if(url==null){
             throw new RuntimeException("url can't be blank");
@@ -118,24 +121,29 @@ public class CreditActivity extends Activity {
             activityStack = new Stack<CreditActivity>();
         }
         activityStack.push(this);
-
-        initView();
-        setContentView(mLinearLayout);
-        //配置导航栏背景颜色
-        navColor=getIntent().getStringExtra("navColor");
-        String navColorTemp="0xff"+navColor.substring(1,navColor.length());
-        Long navl = Long.parseLong(navColorTemp.substring(2), 16);
+        
         //配置导航条文本颜色
         titleColor=getIntent().getStringExtra("titleColor");
         String titleColorTemp="0xff"+titleColor.substring(1,titleColor.length());
         Long titlel = Long.parseLong(titleColorTemp.substring(2), 16);
+        //配置分享文案颜色,同taitle
+        shareColor = titlel;
+        //配置导航栏背景颜色
+        navColor=getIntent().getStringExtra("navColor");
+        String navColorTemp="0xff"+navColor.substring(1,navColor.length());
+        Long navl = Long.parseLong(navColorTemp.substring(2), 16);
+        //初始化页面
+        initView();
+        setContentView(mLinearLayout);
+        //隐藏系统默认的ActionBar
         ActionBar actionBar = getActionBar();
         if(actionBar!=null){
             actionBar.hide();
         }
+        
         mTitle.setTextColor(titlel.intValue());
         mNavigationBar.setBackgroundColor(navl.intValue());
-
+        //添加后退按钮监听事件
         mBackView.setPadding(50, 50, 50, 50);
         mBackView.setClickable(true);
         mBackView.setOnClickListener(new OnClickListener() {
@@ -143,6 +151,14 @@ public class CreditActivity extends Activity {
                 onBackClick();
             }
         });
+        //添加分享按钮的监听事件
+        if(mShare!=null){
+        	 mShare.setOnClickListener(new OnClickListener() {
+                 public void onClick(View view) {
+                 	creditsListener.onShareClick(mWebView, shareUrl,shareThumbnail, shareTitle, shareSubtitle);
+                 }
+             });
+        }
         
         if(ua==null){
             ua=mWebView.getSettings().getUserAgentString()+" Duiba/"+VERSION;
@@ -162,6 +178,7 @@ public class CreditActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 return shouldOverrideUrlByDuiba(view, url);
             }
+            //页面加载结束时获取页面分享信息，如含分享信息，则导航栏上显示分享按钮
             @Override
             public void onPageFinished(WebView view, String url) {
                 view.loadUrl("javascript:if(document.getElementById('duiba-share-url')){duiba_app.shareInfo(document.getElementById(\"duiba-share-url\").getAttribute(\"content\"));}");
@@ -177,8 +194,9 @@ public class CreditActivity extends Activity {
             public void shareInfo(String content) {
                 if(content!=null){
                     String[] dd=content.split("\\|");
-                    if(dd.length==2){
+                    if(dd.length==4){
                         setShareInfo(dd[0],dd[1],dd[2],dd[3]);
+                        mShare.setVisibility(View.VISIBLE);
                     }
                 }
             }
@@ -200,7 +218,7 @@ public class CreditActivity extends Activity {
         mWebView.loadUrl(url);
     }
     
-
+    //配置分享信息
     protected void setShareInfo(String shareUrl,String shareThumbnail,String shareTitle,String shareSubtitle){
     	this.shareUrl = shareUrl;
     	this.shareThumbnail = shareThumbnail;
@@ -214,6 +232,29 @@ public class CreditActivity extends Activity {
         finishActivity(this);
     }
 
+    //初始化页面
+    protected void initView(){
+        mLinearLayout=new LinearLayout(this);
+        mLinearLayout.setBackgroundColor(Color.GRAY);
+        mLinearLayout.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+        mLinearLayout.setOrientation(LinearLayout.VERTICAL);
+
+        int height50dp = dip2px(this,50);
+        //自定义导航栏
+        initNavigationBar();
+        
+        LinearLayout.LayoutParams mLayoutParams = new LinearLayout.LayoutParams(
+                LayoutParams.FILL_PARENT, height50dp);
+
+        mLinearLayout.addView(mNavigationBar,mLayoutParams);
+        //初始化WebView配置
+        initWebView();
+
+        mLinearLayout.addView(mWebView);
+
+    }
+    
+  //自定义导航栏，包含 后退按钮，页面标题，分享按钮（默认隐藏）
     protected void initNavigationBar(){
     	int dp200 = dip2px(this,200);
     	int dp50 = dip2px(this,50);
@@ -228,20 +269,33 @@ public class CreditActivity extends Activity {
         mTitle.setLines(1);
         mTitle.setTextSize(20.0f);
         mNavigationBar.addView(mTitle);
-
-        mBackView = new ImageView(this);
-        mBackView.setBackgroundResource(android.R.drawable.ic_menu_revert);
-
         android.widget.RelativeLayout.LayoutParams lp=(android.widget.RelativeLayout.LayoutParams)mTitle.getLayoutParams();
         lp.addRule(RelativeLayout.CENTER_IN_PARENT);
-
+        
+        mBackView = new ImageView(this);
+        mBackView.setBackgroundResource(android.R.drawable.ic_menu_revert);
         RelativeLayout.LayoutParams mBackLayout=new RelativeLayout.LayoutParams(dp50, dp50);
         mBackLayout.addRule(RelativeLayout.CENTER_VERTICAL, RelativeLayout.TRUE);
         mBackLayout.addRule(RelativeLayout.ALIGN_PARENT_LEFT); 
         mBackLayout.setMargins(dp10, 0, 0, 0);
         mNavigationBar.addView(mBackView,mBackLayout);
+        
+        //在导航栏的右侧添加分享按钮（无分享信息的页面隐藏）
+        mShare=new TextView(this);
+        mShare.setLines(1);
+        mShare.setTextSize(20.0f);
+        mShare.setText("分享");
+        mShare.setPadding(0, 0, dp10, 0);
+        mShare.setTextColor(shareColor.intValue());
+        mNavigationBar.addView(mShare);
+        android.widget.RelativeLayout.LayoutParams shareLp=(android.widget.RelativeLayout.LayoutParams)mShare.getLayoutParams();
+        shareLp.addRule(RelativeLayout.CENTER_VERTICAL, RelativeLayout.TRUE);
+        shareLp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        //设置为默认不显示
+        mShare.setVisibility(View.INVISIBLE);
     }
 
+    //初始化WebView配置
     protected void initWebView(){
         mWebView=new WebView(this);
         mWebView.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -256,14 +310,13 @@ public class CreditActivity extends Activity {
         settings.setSaveFormData(true);
         settings.setSavePassword(true);
         settings.setDefaultZoom(ZoomDensity.MEDIUM);
+        settings.setSupportZoom(true);
 
         CookieManager.getInstance().setAcceptCookie(true);
 
         if (Build.VERSION.SDK_INT > 8) {
             settings.setPluginState(PluginState.ON_DEMAND);
         }
-
-        settings.setSupportZoom(true);
 
         // Technical settings
         settings.setSupportMultipleWindows(true);
@@ -277,33 +330,13 @@ public class CreditActivity extends Activity {
         settings.setDomStorageEnabled(true);
     }
 
-    protected void initView(){
-        mLinearLayout=new LinearLayout(this);
-        mLinearLayout.setBackgroundColor(Color.GRAY);
-        mLinearLayout.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
-        mLinearLayout.setOrientation(LinearLayout.VERTICAL);
-
-        int height50dp = dip2px(this,50);
-        
-        initNavigationBar();
-        LinearLayout.LayoutParams mLayoutParams = new LinearLayout.LayoutParams(
-                LayoutParams.FILL_PARENT, height50dp);
-
-        mLinearLayout.addView(mNavigationBar,mLayoutParams);
-
-        initWebView();
-
-        mLinearLayout.addView(mWebView);
-
-    }
-
     protected void onReceivedTitle(WebView view,String title){
         mTitle.setText(title);
     }
 
     /**
      * 拦截url请求，根据url结尾执行相应的动作。
-     * 用途：模仿原生应用体验。
+     * 用途：模仿原生应用体验，管理页面历史栈。（重要）
      * @param view
      * @param url
      * @return
@@ -316,7 +349,7 @@ public class CreditActivity extends Activity {
         if(!url.startsWith("http://") && !url.startsWith("https://")){
             return false;
         }
-        if(url.contains("dbnewopen")){
+        if(url.contains("dbnewopen")){	//新开页面
             Intent intent = new Intent();
             intent.setClass(CreditActivity.this, CreditActivity.this.getClass());
             intent.putExtra("navColor", navColor);
@@ -324,7 +357,7 @@ public class CreditActivity extends Activity {
             url = url.replace("dbnewopen", "none");
             intent.putExtra("url", url);
             startActivityForResult(intent, RequestCode);
-        }else if(url.contains("dbbackrefresh")){
+        }else if(url.contains("dbbackrefresh")){	//后退并刷新
             url = url.replace("dbbackrefresh", "none");
             Intent intent = new Intent();
             intent.putExtra("url", url);
@@ -332,7 +365,7 @@ public class CreditActivity extends Activity {
             intent.putExtra("titleColor", titleColor);
             setResult(RequestCode,intent);
             finishActivity(this);
-        }else if (url.contains("dbbackrootrefresh")){
+        }else if (url.contains("dbbackrootrefresh")){	//回到积分商城首页并刷新
             url = url.replace("dbbackrootrefresh", "none");
             if(activityStack.size()==1){
             	finishActivity(this);
@@ -340,30 +373,28 @@ public class CreditActivity extends Activity {
             	activityStack.get(0).ifRefresh = true;
                 finishUpActivity();
             }
-        }else if (url.contains("dbbackroot")){
+        }else if (url.contains("dbbackroot")){	//回到积分商城首页
             url = url.replace("dbbackroot", "none");
             if(activityStack.size()==1){
             	finishActivity(this);
             }else{
                 finishUpActivity();
             }
-        }else if(url.contains("dbback")){
+        }else if(url.contains("dbback")){	//后退
             url = url.replace("dbback", "none");
             finishActivity(this);
         }else{
-        	if(url.endsWith(".apk") || url.contains(".apk?")){
+        	if(url.endsWith(".apk") || url.contains(".apk?")){	//支持应用链接下载
                 Uri uri = Uri.parse(url);
                 Intent viewIntent = new Intent(Intent.ACTION_VIEW,uri);
                 startActivity(viewIntent);
                 return true;
             }
-        	if(url.contains("autologin")&&activityStack.size()>0){
+        	if(url.contains("autologin")&&activityStack.size()>0){	//未登录用户登录后返回，所有历史页面置为待刷新
         		//将所有已开Activity设置为onResume时刷新页面。
         		setAllActivityDelayRefresh();
         	}
-
             view.loadUrl(url);
-
         }
         return true;
     }
@@ -404,6 +435,8 @@ public class CreditActivity extends Activity {
             return super.onKeyDown(keyCode, event);
         }
     }
+    
+    //--------------------------------------------以下为工具方法----------------------------------------------
 
     /**
      * 结束除了最底部一个以外的所有Activity
