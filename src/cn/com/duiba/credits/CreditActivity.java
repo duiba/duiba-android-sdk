@@ -59,6 +59,12 @@ import android.widget.TextView;
  * 2、添加各个功能的注释信息。
  * 3、分享接口和自动登录接口改为AlertDialog的展示形式。
  */
+/**
+ * Version 1.0.4
+ * @author tao
+ * 删除webview配置： settings.setLoadWithOverviewMode(true); 
+ * 上面配置可能导致页面无法点击，页面适配等问题。
+ */
 public class CreditActivity extends Activity {
 	private static String ua;
 	private static Stack<CreditActivity> activityStack;
@@ -303,14 +309,13 @@ public class CreditActivity extends Activity {
         WebSettings settings = mWebView.getSettings();
 
         // User settings
-        settings.setJavaScriptEnabled(true);
-        settings.setLoadsImagesAutomatically(true);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(false);
-        settings.setSaveFormData(true);
-        settings.setSavePassword(true);
-        settings.setDefaultZoom(ZoomDensity.MEDIUM);
-        settings.setSupportZoom(true);
+        settings.setJavaScriptEnabled(true);	//设置webview支持javascript
+        settings.setLoadsImagesAutomatically(true);	//支持自动加载图片
+        settings.setUseWideViewPort(true);	//设置webview推荐使用的窗口，使html界面自适应屏幕
+        settings.setSaveFormData(true);	//设置webview保存表单数据
+        settings.setSavePassword(true);	//设置webview保存密码
+        settings.setDefaultZoom(ZoomDensity.MEDIUM);	//设置中等像素密度，medium=160dpi
+        settings.setSupportZoom(true);	//支持缩放
 
         CookieManager.getInstance().setAcceptCookie(true);
 
