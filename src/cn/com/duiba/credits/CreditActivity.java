@@ -25,6 +25,7 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebSettings.PluginState;
@@ -35,6 +36,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 /**
  * Version 1.0.1
@@ -54,21 +56,27 @@ import android.widget.TextView;
  */
 /**
  * Version 1.0.3
- * @author duiba
+ * @author duiba fxt
  * 1、添加分享功能，支持分享的页面的导航栏会显示“分享”，需到兑吧管理后台配置并开启。
  * 2、添加各个功能的注释信息。
  * 3、分享接口和自动登录接口改为AlertDialog的展示形式。
  */
 /**
  * Version 1.0.4
- * @author tao
+ * @author duiba fxt
  * 删除webview配置： settings.setLoadWithOverviewMode(true); 
  * 上面配置可能导致页面无法点击，页面适配等问题。
+ */
+/**
+ * Version 1.0.5
+ * @author duiba fxt
+ * 在onConsume方法中加入刷新积分的js请求。如果页面含有onDBNewOpenBack()方法,则调用该js方法(刷新积分)
+ * 根据api版本，4.4之后使用evaluateJavascript方法。
  */
 public class CreditActivity extends Activity {
 	private static String ua;
 	private static Stack<CreditActivity> activityStack;
-	public static final String VERSION="1.0.3";
+	public static final String VERSION="1.0.5";
     public static CreditsListener creditsListener;
 
     public interface CreditsListener{
@@ -416,20 +424,29 @@ public class CreditActivity extends Activity {
     }
 
     @Override
-    protected void onResume(){
-        super.onResume();
-        if(ifRefresh){
-            this.url=getIntent().getStringExtra("url");
-        	mWebView.loadUrl( this.url);
-        	ifRefresh = false;
-        }else if(delayRefresh){
-        	mWebView.reload();
-        	delayRefresh = false;
-        }else{
-        	//返回页面时，如果页面含有onDBNewOpenBack()方法,则调用该js方法。
-        	mWebView.loadUrl("javascript:if(window.onDBNewOpenBack){onDBNewOpenBack()}");
-        }
-    }
+	protected void onResume() {
+		super.onResume();
+		if (ifRefresh) {
+			this.url = getIntent().getStringExtra("url");
+			mWebView.loadUrl(this.url);
+			ifRefresh = false;
+		} else if (delayRefresh) {
+			mWebView.reload();
+			delayRefresh = false;
+		} else {
+	    	// 返回页面时，如果页面含有onDBNewOpenBack()方法,则调用该js方法。
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+				mWebView.evaluateJavascript("if(window.onDBNewOpenBack){onDBNewOpenBack()}", new ValueCallback<String>() {
+					@Override
+					public void onReceiveValue(String value) {
+						Log.e("credits", "刷新积分");
+					}
+				});
+			} else {
+				mWebView.loadUrl("javascript:if(window.onDBNewOpenBack){onDBNewOpenBack()}");
+			}
+		}
+	}
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
