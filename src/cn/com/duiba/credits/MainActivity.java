@@ -63,6 +63,21 @@ public final class MainActivity extends Activity{
 					 	.setNegativeButton("否", null)
 					 	.show();
 					}
+					
+					/**
+			         * 当点击“复制”按钮时，触发该方法，回调获取到券码code
+			         * @param webView webview对象。
+			         * @param code 复制的券码
+			         */
+					public void onCopyCode(WebView webView, String code) {
+						//当未登录的用户点击去登录时，会调用此处代码。
+						new AlertDialog.Builder(webView.getContext()) 
+					 	.setTitle("复制券码")
+					 	.setMessage("已复制，券码为："+code)
+					 	.setPositiveButton("是", null)
+					 	.setNegativeButton("否", null)
+					 	.show();
+					}
 				};
 			}
 		});

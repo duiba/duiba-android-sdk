@@ -3,6 +3,7 @@ package cn.com.duiba.credits;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
+
 import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
@@ -36,7 +37,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 /**
  * Version 1.0.1
@@ -73,10 +73,26 @@ import android.widget.Toast;
  * 在onConsume方法中加入刷新积分的js请求。如果页面含有onDBNewOpenBack()方法,则调用该js方法(刷新积分)
  * 根据api版本，4.4之后使用evaluateJavascript方法。
  */
+/**
+ * Version 1.0.6
+ * @author duiba fxt
+ * 1.分享功能从js调java代码接口方式改为使用特定uri拦截的方式，消除因页面加载慢导致的分享按钮不出现问题。
+ * 2.修复网络慢时，分享按钮可能不出现的bug：改为url拦截方式触发，消除注入js延迟问题。
+ * 3.修复分享监听事件空指针的bug：添加creditsListener非空判断。
+ * 4.添加处理电话链接，启动本地通话应用。
+ */
+/**
+ * Version 1.0.7
+ * @author duiba fxt
+ * 提供券码复制功能接口。
+ * js触发，券码传值
+ */
+
+
 public class CreditActivity extends Activity {
 	private static String ua;
 	private static Stack<CreditActivity> activityStack;
-	public static final String VERSION="1.0.5";
+	public static final String VERSION="107";
     public static CreditsListener creditsListener;
 
     public interface CreditsListener{
@@ -95,18 +111,22 @@ public class CreditActivity extends Activity {
          * @param currentUrl 当前页面的url
          */
         public void onLoginClick(WebView webView,String currentUrl);
+
+        /**
+         * 当点复制券码时
+         * @param webView webview对象。
+         * @param code 复制的券码
+         */
+		public void onCopyCode(WebView mWebView, String code);
     }
 
     protected String url;
-    
     protected String shareUrl;			//分享的url
     protected String shareThumbnail;	//分享的缩略图
     protected String shareTitle;		//分享的标题
     protected String shareSubtitle;		//分享的副标题
-
     protected Boolean ifRefresh = false;
     protected Boolean delayRefresh = false;
-
     protected String navColor;
     protected String titleColor;
     protected Long shareColor;
@@ -120,100 +140,75 @@ public class CreditActivity extends Activity {
 
     private int RequestCode=100;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);	//锁定竖屏显示
-        
-        url=getIntent().getStringExtra("url");
-        if(url==null){
-            throw new RuntimeException("url can't be blank");
-        }
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT); // 锁定竖屏显示
+		url = getIntent().getStringExtra("url");
+		if (url == null) {
+			throw new RuntimeException("url can't be blank");
+		}
 
-        if (activityStack == null) {
-            activityStack = new Stack<CreditActivity>();
-        }
-        activityStack.push(this);
-        
-        //配置导航条文本颜色
-        titleColor=getIntent().getStringExtra("titleColor");
-        String titleColorTemp="0xff"+titleColor.substring(1,titleColor.length());
-        Long titlel = Long.parseLong(titleColorTemp.substring(2), 16);
-        //配置分享文案颜色,同taitle
-        shareColor = titlel;
-        //配置导航栏背景颜色
-        navColor=getIntent().getStringExtra("navColor");
-        String navColorTemp="0xff"+navColor.substring(1,navColor.length());
-        Long navl = Long.parseLong(navColorTemp.substring(2), 16);
-        //初始化页面
-        initView();
-        setContentView(mLinearLayout);
-        //隐藏系统默认的ActionBar
-        ActionBar actionBar = getActionBar();
-        if(actionBar!=null){
-            actionBar.hide();
-        }
-        
-        mTitle.setTextColor(titlel.intValue());
-        mNavigationBar.setBackgroundColor(navl.intValue());
-        //添加后退按钮监听事件
-        mBackView.setPadding(50, 50, 50, 50);
-        mBackView.setClickable(true);
-        mBackView.setOnClickListener(new OnClickListener() {
-            public void onClick(View view) {
-                onBackClick();
-            }
-        });
-        //添加分享按钮的监听事件
-        if(mShare!=null){
-        	 mShare.setOnClickListener(new OnClickListener() {
-                 public void onClick(View view) {
-                 	creditsListener.onShareClick(mWebView, shareUrl,shareThumbnail, shareTitle, shareSubtitle);
-                 }
-             });
-        }
-        
-        if(ua==null){
-            ua=mWebView.getSettings().getUserAgentString()+" Duiba/"+VERSION;
-        }
-        mWebView.getSettings().setUserAgentString(ua);
+		// 管理匿名类栈，用于模拟原生应用的页面跳转。
+		if (activityStack == null) {
+			activityStack = new Stack<CreditActivity>();
+		}
+		activityStack.push(this);
 
-        mWebView.setWebChromeClient(new WebChromeClient(){
-            @Override
-            public void onReceivedTitle(WebView view, String title) {
-                CreditActivity.this.onReceivedTitle(view, title);
-            }
+		// 配置导航条文本颜色
+		titleColor = getIntent().getStringExtra("titleColor");
+		String titleColorTemp = "0xff" + titleColor.substring(1, titleColor.length());
+		Long titlel = Long.parseLong(titleColorTemp.substring(2), 16);
+		// 配置分享文案颜色,同title
+		shareColor = titlel;
+		// 配置导航栏背景颜色
+		navColor = getIntent().getStringExtra("navColor");
+		String navColorTemp = "0xff" + navColor.substring(1, navColor.length());
+		Long navl = Long.parseLong(navColorTemp.substring(2), 16);
+		// 初始化页面
+		initView();
+		setContentView(mLinearLayout);
+		// 隐藏系统默认的ActionBar
+		ActionBar actionBar = getActionBar();
+		if (actionBar != null) {
+			actionBar.hide();
+		}
 
-        });
+		mTitle.setTextColor(titlel.intValue());
+		mNavigationBar.setBackgroundColor(navl.intValue());
+		mBackView.setPadding(50, 50, 50, 50);
+		mBackView.setClickable(true);
 
-        mWebView.setWebViewClient(new WebViewClient(){
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return shouldOverrideUrlByDuiba(view, url);
-            }
-            //页面加载结束时获取页面分享信息，如含分享信息，则导航栏上显示分享按钮
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                view.loadUrl("javascript:if(document.getElementById('duiba-share-url')){duiba_app.shareInfo(document.getElementById(\"duiba-share-url\").getAttribute(\"content\"));}");
-                super.onPageFinished(view, url);
-            }
-        });
+		// 添加后退按钮监听事件
+		mBackView.setOnClickListener(new OnClickListener() {
+			public void onClick(View view) {
+				onBackClick();
+			}
+		});
+		// 添加分享按钮的监听事件
+		if (mShare != null) {
+			mShare.setOnClickListener(new OnClickListener() {
+				public void onClick(View view) {
+					if (creditsListener != null) {
+						creditsListener.onShareClick(mWebView, shareUrl, shareThumbnail, shareTitle, shareSubtitle);
+					}
+				}
+			});
+		}
 
         //js调java代码接口。
         mWebView.addJavascriptInterface(new Object(){
-        	
-        	//用于回传分享url和title。
-            @JavascriptInterface
-            public void shareInfo(String content) {
-                if(content!=null){
-                    String[] dd=content.split("\\|");
-                    if(dd.length==4){
-                        setShareInfo(dd[0],dd[1],dd[2],dd[3]);
-                        mShare.setVisibility(View.VISIBLE);
-                    }
-                }
-            }
+//        	//用于回传分享url和title。（V1.05之后改用url拦截方式处理。）
+//            @JavascriptInterface
+//            public void shareInfo(String content) {
+//                if(content!=null){
+//                    String[] dd=content.split("\\|");
+//                    if(dd.length==4){
+//                        setShareInfo(dd[0],dd[1],dd[2],dd[3]);
+//                        mShare.setVisibility(View.VISIBLE);
+//                    }
+//                }
+//            }
             
             //用于跳转用户登录页面事件。
             @JavascriptInterface
@@ -227,18 +222,43 @@ public class CreditActivity extends Activity {
 					});
             	}
             }
+            
+            //复制券码
+            @JavascriptInterface
+            public void copyCode(final String code){
+            	if(creditsListener!=null){
+            		mWebView.post(new Runnable() {
+						@Override
+						public void run() {
+							creditsListener.onCopyCode(mWebView, code);
+						}
+					});
+            	}
+            }
+            
         },"duiba_app");
         
-        mWebView.loadUrl(url);
-    }
-    
-    //配置分享信息
-    protected void setShareInfo(String shareUrl,String shareThumbnail,String shareTitle,String shareSubtitle){
-    	this.shareUrl = shareUrl;
-    	this.shareThumbnail = shareThumbnail;
-    	this.shareSubtitle = shareSubtitle;
-    	this.shareTitle = shareTitle;
-    }
+		if (ua == null) {
+			ua = mWebView.getSettings().getUserAgentString() + " Duiba/" + VERSION;
+		}
+		mWebView.getSettings().setUserAgentString(ua);
+
+		mWebView.setWebChromeClient(new WebChromeClient() {
+			@Override
+			public void onReceivedTitle(WebView view, String title) {
+				CreditActivity.this.onReceivedTitle(view, title);
+			}
+		});
+
+		mWebView.setWebViewClient(new WebViewClient() {
+			@Override
+			public boolean shouldOverrideUrlLoading(WebView view, String url) {
+				return shouldOverrideUrlByDuiba(view, url);
+			}
+		});
+
+		mWebView.loadUrl(url);
+	}
     
     protected void onBackClick(){
         Intent intent=new Intent();
@@ -246,27 +266,26 @@ public class CreditActivity extends Activity {
         finishActivity(this);
     }
 
-    //初始化页面
-    protected void initView(){
-        mLinearLayout=new LinearLayout(this);
-        mLinearLayout.setBackgroundColor(Color.GRAY);
-        mLinearLayout.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
-        mLinearLayout.setOrientation(LinearLayout.VERTICAL);
+	// 初始化页面
+	protected void initView() {
+		mLinearLayout = new LinearLayout(this);
+		mLinearLayout.setBackgroundColor(Color.GRAY);
+		mLinearLayout.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+		mLinearLayout.setOrientation(LinearLayout.VERTICAL);
 
-        int height50dp = dip2px(this,50);
-        //自定义导航栏
-        initNavigationBar();
-        
-        LinearLayout.LayoutParams mLayoutParams = new LinearLayout.LayoutParams(
-                LayoutParams.FILL_PARENT, height50dp);
+		int height50dp = dip2px(this, 50);
+		// 自定义导航栏
+		initNavigationBar();
 
-        mLinearLayout.addView(mNavigationBar,mLayoutParams);
-        //初始化WebView配置
-        initWebView();
+		LinearLayout.LayoutParams mLayoutParams = new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, height50dp);
 
-        mLinearLayout.addView(mWebView);
+		mLinearLayout.addView(mNavigationBar, mLayoutParams);
+		// 初始化WebView配置
+		initWebView();
 
-    }
+		mLinearLayout.addView(mWebView);
+
+	}
     
   //自定义导航栏，包含 后退按钮，页面标题，分享按钮（默认隐藏）
     protected void initNavigationBar(){
@@ -307,6 +326,7 @@ public class CreditActivity extends Activity {
         shareLp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
         //设置为默认不显示
         mShare.setVisibility(View.INVISIBLE);
+        mShare.setClickable(false);
     }
 
     //初始化WebView配置
@@ -320,6 +340,7 @@ public class CreditActivity extends Activity {
         settings.setJavaScriptEnabled(true);	//设置webview支持javascript
         settings.setLoadsImagesAutomatically(true);	//支持自动加载图片
         settings.setUseWideViewPort(true);	//设置webview推荐使用的窗口，使html界面自适应屏幕
+        settings.setLoadWithOverviewMode(true); 
         settings.setSaveFormData(true);	//设置webview保存表单数据
         settings.setSavePassword(true);	//设置webview保存密码
         settings.setDefaultZoom(ZoomDensity.MEDIUM);	//设置中等像素密度，medium=160dpi
@@ -347,70 +368,101 @@ public class CreditActivity extends Activity {
         mTitle.setText(title);
     }
 
-    /**
-     * 拦截url请求，根据url结尾执行相应的动作。
-     * 用途：模仿原生应用体验，管理页面历史栈。（重要）
-     * @param view
-     * @param url
-     * @return
-     */
-    protected boolean shouldOverrideUrlByDuiba(WebView view,String url){
-        if(this.url.equals(url)){
-            view.loadUrl(url);
-            return true;
-        }
-        if(!url.startsWith("http://") && !url.startsWith("https://")){
-            return false;
-        }
-        if(url.contains("dbnewopen")){	//新开页面
-            Intent intent = new Intent();
-            intent.setClass(CreditActivity.this, CreditActivity.this.getClass());
-            intent.putExtra("navColor", navColor);
-            intent.putExtra("titleColor", titleColor);
-            url = url.replace("dbnewopen", "none");
-            intent.putExtra("url", url);
-            startActivityForResult(intent, RequestCode);
-        }else if(url.contains("dbbackrefresh")){	//后退并刷新
-            url = url.replace("dbbackrefresh", "none");
-            Intent intent = new Intent();
-            intent.putExtra("url", url);
-            intent.putExtra("navColor", navColor);
-            intent.putExtra("titleColor", titleColor);
-            setResult(RequestCode,intent);
-            finishActivity(this);
-        }else if (url.contains("dbbackrootrefresh")){	//回到积分商城首页并刷新
-            url = url.replace("dbbackrootrefresh", "none");
-            if(activityStack.size()==1){
-            	finishActivity(this);
-            }else{
-            	activityStack.get(0).ifRefresh = true;
-                finishUpActivity();
-            }
-        }else if (url.contains("dbbackroot")){	//回到积分商城首页
-            url = url.replace("dbbackroot", "none");
-            if(activityStack.size()==1){
-            	finishActivity(this);
-            }else{
-                finishUpActivity();
-            }
-        }else if(url.contains("dbback")){	//后退
-            url = url.replace("dbback", "none");
-            finishActivity(this);
-        }else{
-        	if(url.endsWith(".apk") || url.contains(".apk?")){	//支持应用链接下载
-                Uri uri = Uri.parse(url);
-                Intent viewIntent = new Intent(Intent.ACTION_VIEW,uri);
-                startActivity(viewIntent);
-                return true;
-            }
-        	if(url.contains("autologin")&&activityStack.size()>0){	//未登录用户登录后返回，所有历史页面置为待刷新
-        		//将所有已开Activity设置为onResume时刷新页面。
-        		setAllActivityDelayRefresh();
-        	}
-            view.loadUrl(url);
-        }
-        return true;
-    }
+	/**
+	 * 拦截url请求，根据url结尾执行相应的动作。 （重要）
+	 * 用途：模仿原生应用体验，管理页面历史栈。
+	 * @param view
+	 * @param url
+	 * @return
+	 */
+	protected boolean shouldOverrideUrlByDuiba(WebView view, String url) {
+		Uri uri = Uri.parse(url);
+		if (this.url.equals(url)) {
+			view.loadUrl(url);
+			return true;
+		}
+		// 处理电话链接，启动本地通话应用。
+		if (url.startsWith("tel:")) {
+			Intent intent = new Intent(Intent.ACTION_DIAL, uri);
+			startActivity(intent);
+			return true;
+		}
+		if (!url.startsWith("http://") && !url.startsWith("https://")) {
+			return false;
+		}
+		// 截获页面分享请求，分享数据
+		if ("/client/dbshare".equals(uri.getPath())) {
+			String content = uri.getQueryParameter("content");
+			if (creditsListener != null && content != null) {
+				String[] dd = content.split("\\|");
+				if (dd.length == 4) {
+					setShareInfo(dd[0], dd[1], dd[2], dd[3]);
+					mShare.setVisibility(View.VISIBLE);
+					mShare.setClickable(true);
+				}
+			}
+			return true;
+		}
+		// 截获页面唤起登录请求。（目前暂时还是用js回调的方式，这里仅作预留。）
+		if ("/client/dblogin".equals(uri.getPath())) {
+			if (creditsListener != null) {
+				mWebView.post(new Runnable() {
+					@Override
+					public void run() {
+						creditsListener.onLoginClick(mWebView, mWebView.getUrl());
+					}
+				});
+			}
+			return true;
+		}
+		if (url.contains("dbnewopen")) { // 新开页面
+			Intent intent = new Intent();
+			intent.setClass(CreditActivity.this, CreditActivity.this.getClass());
+			intent.putExtra("navColor", navColor);
+			intent.putExtra("titleColor", titleColor);
+			url = url.replace("dbnewopen", "none");
+			intent.putExtra("url", url);
+			startActivityForResult(intent, RequestCode);
+		} else if (url.contains("dbbackrefresh")) { // 后退并刷新
+			url = url.replace("dbbackrefresh", "none");
+			Intent intent = new Intent();
+			intent.putExtra("url", url);
+			intent.putExtra("navColor", navColor);
+			intent.putExtra("titleColor", titleColor);
+			setResult(RequestCode, intent);
+			finishActivity(this);
+		} else if (url.contains("dbbackrootrefresh")) { // 回到积分商城首页并刷新
+			url = url.replace("dbbackrootrefresh", "none");
+			if (activityStack.size() == 1) {
+				finishActivity(this);
+			} else {
+				activityStack.get(0).ifRefresh = true;
+				finishUpActivity();
+			}
+		} else if (url.contains("dbbackroot")) { // 回到积分商城首页
+			url = url.replace("dbbackroot", "none");
+			if (activityStack.size() == 1) {
+				finishActivity(this);
+			} else {
+				finishUpActivity();
+			}
+		} else if (url.contains("dbback")) { // 后退
+			url = url.replace("dbback", "none");
+			finishActivity(this);
+		} else {
+			if (url.endsWith(".apk") || url.contains(".apk?")) { // 支持应用链接下载
+				Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+				startActivity(viewIntent);
+				return true;
+			}
+			if (url.contains("autologin") && activityStack.size() > 1) { // 未登录用户登录后返回，所有历史页面置为待刷新
+				// 将所有已开Activity设置为onResume时刷新页面。
+				setAllActivityDelayRefresh();
+			}
+			view.loadUrl(url);
+		}
+		return true;
+	}
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
@@ -438,9 +490,7 @@ public class CreditActivity extends Activity {
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
 				mWebView.evaluateJavascript("if(window.onDBNewOpenBack){onDBNewOpenBack()}", new ValueCallback<String>() {
 					@Override
-					public void onReceiveValue(String value) {
-						Log.e("credits", "刷新积分");
-					}
+					public void onReceiveValue(String value) { }
 				});
 			} else {
 				mWebView.loadUrl("javascript:if(window.onDBNewOpenBack){onDBNewOpenBack()}");
@@ -460,6 +510,16 @@ public class CreditActivity extends Activity {
     
     //--------------------------------------------以下为工具方法----------------------------------------------
 
+ 	/**
+ 	 * 配置分享信息
+ 	 */
+    protected void setShareInfo(String shareUrl,String shareThumbnail,String shareTitle,String shareSubtitle){
+    	this.shareUrl = shareUrl;
+    	this.shareThumbnail = shareThumbnail;
+    	this.shareSubtitle = shareSubtitle;
+    	this.shareTitle = shareTitle;
+    }
+    
     /**
      * 结束除了最底部一个以外的所有Activity
      */
