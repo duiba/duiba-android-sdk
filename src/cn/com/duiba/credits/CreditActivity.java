@@ -168,10 +168,13 @@ public class CreditActivity extends Activity {
 		// 初始化页面
 		initView();
 		setContentView(mLinearLayout);
-		// 隐藏系统默认的ActionBar
-		ActionBar actionBar = getActionBar();
-		if (actionBar != null) {
-			actionBar.hide();
+		
+		// api11以上的系统隐藏系统默认的ActionBar
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+			ActionBar actionBar = getActionBar();
+			if (actionBar != null) {
+				actionBar.hide();
+			}
 		}
 
 		mTitle.setTextColor(titlel.intValue());
