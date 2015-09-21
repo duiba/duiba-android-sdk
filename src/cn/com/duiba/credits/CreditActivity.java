@@ -86,8 +86,9 @@ import android.widget.TextView;
  * @author duiba fxt
  * 提供券码复制功能接口。
  * js触发，券码传值
+ * 提供监听返回首页时，积分刷新动作。
+ * 删除掉不使用的工具方法
  */
-
 
 public class CreditActivity extends Activity {
 	private static String ua;
@@ -118,6 +119,13 @@ public class CreditActivity extends Activity {
          * @param code 复制的券码
          */
 		public void onCopyCode(WebView mWebView, String code);
+
+		/**
+		 * 通知本地，刷新积分
+		 * @param mWebView
+		 * @param credits
+		 */
+		public void onLocalRefresh(WebView mWebView, String credits);
     }
 
     protected String url;
@@ -234,6 +242,19 @@ public class CreditActivity extends Activity {
 						@Override
 						public void run() {
 							creditsListener.onCopyCode(mWebView, code);
+						}
+					});
+            	}
+            }
+            
+            //客户端本地触发刷新积分。
+            @JavascriptInterface
+            public void localRefresh(final String credits){
+            	if(creditsListener!=null){
+            		mWebView.post(new Runnable() {
+						@Override
+						public void run() {
+							creditsListener.onLocalRefresh(mWebView, credits);
 						}
 					});
             	}
@@ -564,94 +585,4 @@ public class CreditActivity extends Activity {
         return (int) (dpValue * scale + 0.5f);  
     }  
 
-    /**
-     * 查询手机内非系统应用
-     * @param context
-     * @return
-     */
-    public List<PackageInfo> getAllApps(Context context) {
-        List<PackageInfo> apps = new ArrayList<PackageInfo>();
-        PackageManager pManager = context.getPackageManager();
-        //获取手机内所有应用
-        List<PackageInfo> paklist = pManager.getInstalledPackages(0);
-        for (int i = 0; i < paklist.size(); i++) {
-            PackageInfo pak = (PackageInfo) paklist.get(i);
-            //判断是否为非系统预装的应用程序
-            if ((pak.applicationInfo.flags & pak.applicationInfo.FLAG_SYSTEM) <= 0) {
-                // customs applications
-                apps.add(pak);
-            }
-        }
-        return apps;
-    }
-
-    /**
-     * 获取用户最近一次的地理位置，经纬度。
-     * @param context
-     * @return
-     */
-    public static String getLocation(Context context) {
-        android.location.Location location = null;
-
-        String provider = null;
-        double latitude = 0;
-        double longitude = 0;
-        double accuracy = 0;
-
-        String userLocation = null;
-
-        LocationManager lManager = (LocationManager) context
-                .getSystemService(Context.LOCATION_SERVICE);
-
-        if (lManager == null) {
-            Log.e("location","LocationManager is null");
-            return null;
-        }
-
-        android.location.Location aLocation = null;
-
-        // 开启了gps
-        if (lManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            provider = LocationManager.GPS_PROVIDER;
-            aLocation = lManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (aLocation != null) {
-                latitude = aLocation.getLatitude();
-                longitude = aLocation.getLongitude();
-                accuracy = aLocation.getAccuracy();
-                userLocation = "location: latitude="+latitude+";longitude="+longitude+";accuracy="+accuracy;
-                return userLocation;
-            }
-        }
-
-        if (lManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-            provider = LocationManager.NETWORK_PROVIDER;
-            aLocation = lManager
-                    .getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        }
-
-        // 如果net能取到位置，则返回
-        if (aLocation != null) {
-            latitude = aLocation.getLatitude();
-            longitude = aLocation.getLongitude();
-            accuracy = aLocation.getAccuracy();
-            userLocation = "location: latitude="+latitude+";longitude="+longitude+";accuracy="+accuracy;
-            return userLocation;
-        }
-        TelephonyManager telephonyManager=  (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        // 否则判断是否cmda定位
-        if (telephonyManager.getPhoneType() == TelephonyManager.PHONE_TYPE_CDMA) {
-            CdmaCellLocation cdmaCellLocation = (CdmaCellLocation) telephonyManager.getCellLocation();
-            if (cdmaCellLocation != null) {
-                provider = "cdma";
-                latitude = (double) cdmaCellLocation
-                        .getBaseStationLatitude() / 14400;
-                longitude = (double) cdmaCellLocation
-                        .getBaseStationLongitude() / 14400;
-                userLocation = "location: latitude="+latitude+";longitude="+longitude+";accuracy="+accuracy;
-                return userLocation;
-            }
-        }
-
-        return null;
-    }
 }

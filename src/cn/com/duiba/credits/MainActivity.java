@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.Toast;
 import cn.com.duiba.credits.CreditActivity.CreditsListener;
 
 public final class MainActivity extends Activity{
@@ -77,6 +78,15 @@ public final class MainActivity extends Activity{
 					 	.setPositiveButton("是", null)
 					 	.setNegativeButton("否", null)
 					 	.show();
+					}
+
+					/**
+					 * 积分商城返回首页刷新积分时，触发该方法。
+					 */
+					public void onLocalRefresh(WebView mWebView, String credits) {
+						//String credits为积分商城返回的最新积分，不保证准确。
+						//触发更新本地积分，这里建议用ajax向自己服务器请求积分值，比较准确。
+						Toast.makeText(getApplicationContext(), "触发本地刷新积分："+credits,Toast.LENGTH_SHORT).show();
 					}
 				};
 			}
